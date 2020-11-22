@@ -1,0 +1,8 @@
+
+# for macs
+
+.ds_store
+__pycache__/
+env/
+.vscode/
+*.pyc
