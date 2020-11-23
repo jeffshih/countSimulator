@@ -4,9 +4,10 @@ import numpy as np
 
 class kalmanFilter(object):
 
-    def __init__(self, Q = None, R = None, P = None, x0 = None):
+    def __init__(self, F = None, H = None, Q = None, R = None, P = None, x0 = None):
 
-    #transition Matrix
+        
+        #transition Matrix
         self.F = np.array([[1, 0, 0, 0, 1, 0, 0],
                                            [0, 1, 0, 0, 0, 1, 0],
                                            [0, 0, 1, 0, 0, 0, 1],
@@ -23,7 +24,13 @@ class kalmanFilter(object):
 
         #hard coded norm
         self.n = 7
-        self.m = 7
+        self.m = 4
+
+        self.x = np.zeros((self.n, 1))
+        self.x[0][0] = x0[0][0]
+        self.x[1][0] = x0[1][0]
+        self.x[2][0] = x0[2][0]
+        self.x[3][0] = x0[3][0]
 
         #process noise covariance 
         self.Q = np.array([[1, 0, 0, 0, 0, 0, 0],
@@ -49,7 +56,6 @@ class kalmanFilter(object):
                                            [0, 0, 0, 0, 0, 1000, 0],
                                            [0, 0, 0, 0, 0, 0, 1000]])
 
-        self.x = np.zeros((self.n, 1)) if x0 is None else x0
 
 
     def update(self, z):
@@ -66,9 +72,9 @@ class kalmanFilter(object):
         #P = (I-KH)Pn(I-KH)^T+KRKT
 
         #I-KH
-        temp1 = np.dot(I-np.dot(K,self.H))
+        temp1 = I-np.dot(K,self.H)
         #(I-KH)Pn
-        temp2 = np.dot(temp1, self.p)
+        temp2 = np.dot(temp1, self.P)
         
         #(I-KH)Transpose
         temp3 = (I-np.dot(K, self.H)).T
