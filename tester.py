@@ -10,35 +10,80 @@ from config import *
 
 
 
-def extractCountedType(res:dict):
-    countType = [0 for _ in range(5)]
-    for val in res.values():
-        for r in val:
-            if r is not None:
-                countType[r-1]+=1    
-    return countType 
-
-def compareResult(res:dict, truth:dict):
-    return extractCountedType(res), extractCountedType(truth)
 
 
-def extractCountForPlot(res:dict):
-    x , y = [], []
-    for frame, cnts in res.items():
-        x.append(int(frame))
-        y.append(np.array(cnts if cnts is not None else [0]))
-    return np.array(x), np.array(y)
+
+class evaluation(object):
+
+    def __init__(self):
+        self.dataGen = detGenerator(minObj=5,maxObj=10, framenum = 100)
+        self.App = mainProgram()
+        self.genDetList = self.dataGen.getDetectionRes()
+        self.App.initWithData(self.genDetList)
+        self.grountTruth = self.dataGen.getGroundTruth()
+        self.countingRes = self.App.genCountingResult()
+        self.dataGen.reset()
+
+    def extractType(self, res:dict):
+        countType = [0 for _ in range(5)]
+        for val in res.values():
+            for r in val:
+                if r is not None:
+                    countType[r-1]+=1    
+        return countType 
+
+    def runCountingAndOutput(self):
+        self.App.doCounting()
+
+    def resetData(self):
+        self.dataGen.reset()
+        self.genDetList = self.dataGen.getDetectionRes()
+        self.App.initWithData(self.genDetList)
+        self.grountTruth = self.dataGen.getGroundTruth()
+        
+
+    def updateCountingResult(self):
+        self.countingRes = self.App.genCountingResult()
+
+    def compareResult(self):
+        return self.extractType(self.countingRes), self.extractType(self.grountTruth)
+
+
+    def extractCountForPlot(self, res:dict):
+        x , y = [], []
+        for frame, cnts in res.items():
+            if len(cnts) == 0:
+                cnts = [0]
+            for element in cnts:
+                x.append(int(frame))
+                y.append(element)
+        
+        return np.array(x), np.array(y)
+
+    def plotDistribution(self, trial):
+        distribution = []
+        for _ in range(trial):
+            l = self.dataGen.getDetectionRes()
+            distribution.append(len(l))
+            self.dataGen.reset()
+        plt.hist(distribution, bins=20)
+        plt.show()
+    
+    
+
+    
+
+
 
 if __name__ == "__main__":
-    dataGen = detGenerator()
+    dataGen = detGenerator(framenum=30)
     detectionResList = dataGen.getDetectionRes()
     dataGenRes = dataGen.getGroundTruth()
-    #dataGen.reset()
+    dataGen.reset()
 
-    App = mainProgram(detectionResList, resolution)
-    res = App.genCountingResult()
+    #App = mainProgram(detectionResList, resolution)
+    #res = App.genCountingResult()
 
-    x , y = extractCountForPlot(res)
-    print(x, y)
-#    print(compareResult(res, dataGenRes))
-    #plt.plot(x, y, )   
+    plotDistribution(dataGen, 1000)
+
+    

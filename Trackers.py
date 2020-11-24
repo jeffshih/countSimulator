@@ -26,6 +26,7 @@ class Tracker(object):
         self.lastUpdateRect = rect
         self.catagory = catagory
         self.lastUpdateTime = 0
+        self.controlMatrix = np.array([[rect.width//2],[0],[0],[0]])
 
         self.color = (rnd(255), rnd(255), rnd(255))
 
@@ -54,7 +55,9 @@ class Tracker(object):
         return self.status
 
     def predict(self):
-        bbox = self.kf.predict()
+
+        bbox = self.kf.predict(u=self.controlMatrix)
+        
         self.lifespan +=1
         if bbox[2][0] > 0 and bbox[3][0] > 0:
             self.estimateBox = measurementToRect(bbox)
@@ -65,25 +68,27 @@ class Tracker(object):
             return self.estimateBox
     
 
-        #at most update 5 times
-        if self.lifespan > 5 :
-            self.status = 1
-        elif self.updateTimes == 5:
+        #update 3 times is healthy enough
+        
+        if self.updateTimes == 3:
             self.status = 1
         
         #if prediction is already out of boundary
         elif self.estimateBox.center.x > resolution[0] or self.estimateBox.center.x < 0:
-            self.status = 1
+            self.status = 2
 
         elif self.estimateBox.center.y > resolution[1] or self.estimateBox.center.y < 0:
             if (self.updateTimes > 2):
-                self.status = 1
+                self.status = 2
             else:
-                self.status = 0
+                self.status = 4
+
+        elif self.lifespan > 3 :
+            self.status = 3
 
         #if the tracker move 3 frame but no update-> unhealthy
         elif self.lifespan - self.lastUpdateTime > 3:
-            self.status = 2
+            self.status = 4
         # healthy and young tracker, keep tracking
         else:
             self.status = 0

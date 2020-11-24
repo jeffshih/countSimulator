@@ -46,10 +46,10 @@ class detectionResult(object):
         #belt move in constant speed
         #when every frame move, the object move in x direction with 
         #1/5 of the frame width and y theoratically don't move
-        self.xStride = imgSize.w/5
+        self.xStride = imgSize.w/7
         
         self.existTime = 0
-        self.lifespan = np.random.randint(3,6)
+        self.lifespan = 5-self.absW//100
         
         #object original y while object wont move in y direction drastically,
         #keep the original w and h
@@ -59,8 +59,6 @@ class detectionResult(object):
         self.isDetected = True
     
 
-    def mover(self):
-        pass
 
     def updateConfidence(self):
         self.confidence = 1-(np.random.rand()*0.02)

@@ -1,5 +1,6 @@
 from typing import Generator
 import numpy as np
+from numpy.linalg.linalg import det
 import scipy as sp
 from Util import *
 import datetime
@@ -9,18 +10,19 @@ from detection import detectionResult
 from datetime import datetime
 import csv
 from config import *
+import matplotlib.pyplot as plt
 
 
 class detGenerator(object):
     
-    def __init__(self, resolution = (1080,720), minObj=5, maxObj=10):
+    def __init__(self, resolution = (1080,720), minObj=5, maxObj=10, framenum=100):
         self.width = resolution[0]
         self.height = resolution[1]
         self.wh = Point(resolution[0],resolution[1])
         self.maxObj = maxObj
         self.minObj = minObj
         self.imgId = 0
-
+        self.framenum = framenum
         #for validation
         self.objId = 0
         self.objCatagories = {1:0,2:0,3:0,4:0,5:0}
@@ -46,10 +48,13 @@ class detGenerator(object):
         #init first frame
         self.batchAddObject(self.initObjectCount)
         
-        
+        # to delete
+        self.line = 0
+        self.calculatedLine = 0
+
     
-    def addObj(self, det:detectionResult, isFirst=False):        
-        if not isFirst:
+    def addObj(self, det:detectionResult):        
+        if self.imgId != 0:
             occupiedY = int(det.center.y // 0.2)
             self.validGenAreaY[occupiedY] = 0
         self.objectHolds[self.objId] = det 
@@ -58,7 +63,7 @@ class detGenerator(object):
         
        
 
-    def genObject(self, isFirst=False):
+    def genObject(self):
         now = datetime.now()
         currentTimestamp = int(datetime.timestamp(now))
         
@@ -69,14 +74,15 @@ class detGenerator(object):
         #each object might appear 3~5 frame
 
         #gen object width and height
-        w, h = catagorySize[catagory][0], catagorySize[catagory][1]
+        #w, h = catagorySize[catagory][0], catagorySize[catagory][1]
        
-
-        if isFirst:
+        w, h = np.random.randint(50,300), np.random.randint(50, 150)
+        if self.imgId == 0:
             absCenterX = np.random.rand()*self.width 
         else:
             xMid = self.leftMost/2
-            absCenterX = np.random.rand()*w + xMid
+            absCenterX = max((0.5-np.random.rand())*w + xMid, self.width/5)
+            
 
         
         #Object won't directly has large overlap, it might continuously appear
@@ -116,19 +122,16 @@ class detGenerator(object):
         ncr, nwhr = Point(Cx, Cy), Point(newW, newH)
         det.updatePosition(currentTimestamp, ncr, nwhr)
 
-    def createNewObject(self, genCount:int):
-        if genCount > 5:
-            self.leftMost = self.width/2
-        
+    def createNewObject(self, genCount:int):        
         self.batchAddObject(genCount)   
         self.lastCreateTime = 0
         self.leftMost = self.width
 
     def batchAddObject(self, num):
         for i in range(num):
-            tempDet = self.genObject(self.imgId==0)
-            while self.checkDetOverLap(tempDet, 0.1) is not True:
-                tempDet = self.genObject(self.imgId==0)
+            tempDet = self.genObject()
+            while self.checkDetOverLap(tempDet, 0.2) is not True:
+                tempDet = self.genObject()
             self.addObj(tempDet)
 
     def updateLeftMostPoint(self):
@@ -152,10 +155,12 @@ class detGenerator(object):
         self.countResult[self.imgId] = []        
         for key, det in self.objectHolds.items():
             self.move(det)
-            if det.existTime == det.lifespan or overlap(self.bg, det.rect) < 0.2*det.rect.area:
+            if det.existTime == det.lifespan :
+                self.calculatedLine += det.existTime
                 toRemove.append(key)
-            if det.existTime == det.lifespan:
                 self.countResult[self.imgId].append(det.catagory)
+        #        print("{} is dead".format(key))
+                
 
         for k in toRemove:
             del self.objectHolds[k]
@@ -165,19 +170,22 @@ class detGenerator(object):
         self.objectCount = len(self.objectHolds)
         l = abs(self.minObj - self.objectCount)
         complement = self.maxObj - self.objectCount
+        #print("lower bound {}".format(l))
+        #print("object num {} and complement {}".format(self.objectCount, complement))
 
         #must create new object 
         if self.objectCount < self.minObj:
-            objToGen = np.random.randint(l, complement)
-            self.createNewObject(objToGen)    
-        elif self.lastCreateTime > 1 :
+            objToGen = np.random.randint(l, complement+1)
+        else:
             objToGen = np.random.randint(complement+1)
-            self.createNewObject(objToGen)
+        #print("Current object hold are {} and generating {}".format(self.objectCount, objToGen))
+        self.createNewObject(objToGen)
         
         self.lastCreateTime +=1    
         self.imgId +=1
     
     def constructDet(self, det:detectionResult):
+        self.line +=1
         return ('{},{},{},{:.4f},{:.3f},{:.3f},{:.3f},{:.3f}'.format(det.timestamp, self.imgId, det.catagory, det.confidence\
                     , det.center.x, det.center.y, det.wh.x, det.wh.y))
 
@@ -201,19 +209,24 @@ class detGenerator(object):
         self.statOfFrame = np.zeros(100)
         self.countResult.clear()
         self.batchAddObject(self.initObjectCount)
+
+        #to delete
+        self.line = 0
         
 
     '''
     below are method for output
     '''
 
-    def printCurrentFrame(self):
+    def printCurrentFrame(self, Output=True):
+        if not Output :
+            return
         for key, det in self.objectHolds.items():
             print(self.constructDet(det))
 
 
     def getDetectionRes(self, useObj=False):
-        while(self.imgId <= 100):
+        while(self.imgId < self.framenum):
             for key, det in self.objectHolds.items():
                 if useObj:
                     self.detectionResultList.append(det)
@@ -225,7 +238,7 @@ class detGenerator(object):
 
     def toCsv(self, filename="detResult.csv"):
         with open(filename, 'a') as f:
-            while(self.imgId <= 100):
+            while(self.imgId < self.framenum):
                 for key, det in self.objectHolds.items():
                     f.write("{}\n".format(self.constructDet(det)))        
                 self.populateFrame()
@@ -233,18 +246,23 @@ class detGenerator(object):
                 f.write("{}\n" .format(self.constructDet(det)))
             
     def display(self):
-        while(self.imgId <= 100):
+        while(self.imgId < self.framenum):
             backGround = np.zeros((720, 1080, 3), np.uint8)
             backGround[:,:,:] = (255,255,255)
             self.populateFrame()
             for key, det in self.objectHolds.items():
                 renderRect(det.rect, backGround, det.catagory-1)
             cv2.imshow("background", backGround)
-            cv2.waitKey(300)
-    
-    def run(self):
-        while(self.imgId <= 100):
-            self.printCurrentFrame()
+            k = cv2.waitKey(0)
+            if k == 'n':                       
+                continue
+            elif k == 27:  #escape key 
+                break
+        cv2.destroyAllWindows()
+
+    def run(self, Output=True):
+        while(self.imgId <= self.framenum):
+            self.printCurrentFrame(Output)
             self.populateFrame()
 
     def getGroundTruth(self):
@@ -252,9 +270,18 @@ class detGenerator(object):
 
 
 if __name__=="__main__":
-    detGen = detGenerator(minObj=5,maxObj=10)
-    detGen.display()
+    detGen = detGenerator(minObj=5,maxObj=10, framenum = 100)
     #detGen.run()
+    #print(detGen.line)
+    detGen.display()
+    #print(detGen.line)
+    '''
+    for _ in range(100):
+        l = detGen.getDetectionRes()
+        print(detGen.line)
+        print(detGen.objId)
+        detGen.reset()
+    '''
 
         
 

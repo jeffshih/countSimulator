@@ -1,7 +1,7 @@
 from numpy.lib.function_base import average
 from numpy.testing._private.utils import break_cycles
 from Generator import detGenerator
-from Util import getMatchingCost, renderRectWithColor, transform, renderRect
+from Util import getMatchingCost, renderRectWithColor, renderTextUnderRect, transform, renderRect
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from config import *
@@ -21,20 +21,20 @@ class trackerManager(object):
         self.assignment = []
         self.currentTrackerID = 0
         self.objectCnt = {}
+        self.frameNum = 0
         for i in range(1,6):
             self.objectCnt[i] = 0
 
 
-    def doTracking(self, detections, frameNum):
+    def doTracking(self, detections):
+        self.frameNum +=1
+        self.currentDet = detections
         self.detectionBoxes = []
         self.predictionBoxes = []
         self.assignment = []
-        meta = []
-
 
         for det in detections:
             self.detectionBoxes.append(det.rect)
-            meta.append([det.catagory, det.confidence])
             #print("At frame:{}, create detection {}".format(frameNum,detBox))
 
         matchedPoints = {}
@@ -56,13 +56,14 @@ class trackerManager(object):
             for j, prediction in enumerate(self.predictionBoxes):
                 cost = getMatchingCost(detection, prediction)
                 costMatrix[i][j] = cost 
-                #print("At i:{}, j:{}, cost is {}".format(i,j,cost))
+            
 
         self.assignment, col_ind = linear_sum_assignment(costMatrix)
         unmatchPred = set()
         unmatchDet = set()
         allItems = set()
         matchedItems = set()
+        
         
 
         if(detCnt > predCnt):
@@ -79,28 +80,47 @@ class trackerManager(object):
         
         #print(self.assignment)
         for idx, assign in enumerate(self.assignment):
-            confidence = meta[assign][1]
+            confidence = self.currentDet[assign].confidence
+            
             '''
             print("assign det {} to pred {}".format(assign, matchedPoints[idx]))
+            
             print(self.detectionBoxes[assign])
             print(len(self.trackerList))
             print(self.trackerList[matchedPoints[idx]].getRect())
             '''
+
             self.trackerList[matchedPoints[idx]].setTracked(self.detectionBoxes[assign], confidence)
+            #print(self.trackerList[matchedPoints[idx]])
+            #pairDP
 
         for detIdx in unmatchDet:
             '''
             print("umatched det at idx {}".format(detIdx))
             '''
-            newDet = self.detectionBoxes[detIdx]
-            data = meta[detIdx]
-            newTracker = Tracker(self.currentTrackerID, newDet, data[0], data[1])
+            newDet = self.currentDet[detIdx]
+            
+            newTracker = Tracker(self.currentTrackerID, newDet.rect, newDet.catagory, newDet.confidence)
             self.trackerList[self.currentTrackerID] = newTracker
             self.currentTrackerID += 1
 
-        renderData = msgForRender(frameNum, self.trackerList, detections)
-        return renderData
 
+    def checkStatus(self, tracker):
+        statusCode = tracker.status
+        id = tracker.trackerId
+        '''
+        if statusCode == 1:
+            print("very healthy tracker tracker {}".format(id))
+        elif statusCode == 2:
+            print("Tracker {} travel through belt".format(id))
+        elif statusCode == 3:
+            print("long live tracker {}".format(id))
+        elif statusCode == 4:
+            print("{} is a dead tracker, bad".format(id))
+        else:
+            print("{} is a good tracker doing well".format(id))
+        '''
+        return statusCode != 0
 
     def predict(self):
         trkToKill = []
@@ -110,24 +130,20 @@ class trackerManager(object):
             #print("trkId from trackerListDict {}".format(trkId))
             if t.lifespan <= 5:
                 #print("trkId from tracker {}".format(t.trackerId))
-                t.predict()
+                bbox = t.predict()
             #check tracker healthy status
-            if t.checkStatus() == 1:
+            if self.checkStatus(t):
                 self.objectCnt[t.catagory] += 1
                 trkMsg = trackerMessage(t)
                 currentMessage[t.trackerId] = trkMsg
                 trkToKill.append(trkId)
-                #print("trkId :{} die in glory".format(trkId))
-            #unhealthy death, do not count
-            elif t.checkStatus() == 2:
-                trkToKill.append(trkId)
-                #print("trkId :{} die in vain".format(trkId))
-
+                
         for id in trkToKill:
             #print("removing {}".format(id))
             del self.trackerList[id]
-
-        return currentMessage
+        
+        renderData = msgForRender(self.frameNum, self.trackerList, self.currentDet)
+        return currentMessage, renderData
     
 
 if __name__ == "__main__":
@@ -140,22 +156,29 @@ if __name__ == "__main__":
     
     momTracker = trackerManager()
     for frameNum, dets in detectionSequence.items():
-        #print(frameNum)
-        renderData = momTracker.doTracking(dets,frameNum)
-        currentFrameCounted = momTracker.predict()
-        #for key, msg in currentFrameCounted.items():
-        #    print(msg)
-
+        momTracker.doTracking(dets)
+        currentFrameCounted, renderData = momTracker.predict()
+       
         backGround = np.zeros((720, 1080, 3), np.uint8)
         backGround[:,:,:] = (255,255,255)
         
         for idx, est in enumerate(renderData.estimateBoxs):
             color = renderData.colors[idx]
-            renderRectWithColor(est, backGround,color)
-        
+            text = "{}, status :{}".format(renderData.trackIds[idx],renderData.trackStatus[idx])
+            renderRectWithColor(est, backGround, color)
+            renderTextUnderRect(est, backGround, text, color)
+
+        '''
         for idx, det in enumerate(renderData.detList):
             catagory = renderData.catagories[idx]-1
             renderRect(det, backGround,catagory)
+        '''
 
         cv2.imshow("blank", backGround)
-        key = cv2.waitKey(1000)
+        k = cv2.waitKey(0)
+        if k == 'n':                       
+            continue
+        elif k == 27:  #escape key 
+            break
+
+    cv2.destroyAllWindows()

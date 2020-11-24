@@ -19,10 +19,10 @@ def renderRectWithColor(rect:rect_, bg, color):
     cv2.rectangle(bg, LU, BR, color, 3)
 
         
-def renderTextUnderRect(rect:rect_, backGround, text):
+def renderTextUnderRect(rect:rect_, backGround, text, trkColor):
     rendStr = "trk id: {}".format(text)
     BR = (int(rect.LU.x+rect.width), int(rect.LU.y+rect.height))
-    cv2.putText(backGround, rendStr, BR, fontFace=cv2.FONT_HERSHEY_PLAIN, fontScale=2, color=colorMap['est'],thickness=3)
+    cv2.putText(backGround, rendStr, BR, fontFace=cv2.FONT_HERSHEY_PLAIN, fontScale=2, color=trkColor ,thickness=3)
 
 
 

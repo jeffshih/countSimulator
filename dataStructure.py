@@ -21,7 +21,8 @@ class trackerMessage(object):
             self.confidence, self.trkId)
 
 class msgForRender(object):
-    def __init__(self, frameNum, trkList, detList):
+    def __init__(self, frameNum, trkList, detList, pair=None):
+        self.pair = []
         self.estimateBoxs = []
         self.catagories = []
         self.lastUpdateRects = []
@@ -31,12 +32,15 @@ class msgForRender(object):
         self.trackIds = []
         self.detList = []
         self.colors = []
+        self.detColors = []
+        self.trackStatus = []
         for trkId, trk in trkList.items():
             self.estimateBoxs.append(trk.estimateBox)
             self.lastUpdateRects.append(trk.lastUpdateRect)
             self.historyList.append(trk.history)
             self.trackIds.append(trkId)
             self.colors.append(trk.color)
+            self.trackStatus.append(trk.status)
             sumConf = 0
             for c in trk.confidence:
                 sumConf += c 
@@ -46,7 +50,7 @@ class msgForRender(object):
             detBox = det.rect
             self.detList.append(detBox)
             self.catagories.append(det.catagory)
-
+           
 #basic rect box for passing, x and y denote center
 class rect_(object):
     #input are pixels
@@ -85,6 +89,9 @@ class state(object):
         w = sqrt(self.measurement[2][0]*self.measurement[3][0])
         h = sqrt(self.measurement[2][0]/self.measurement[3][0])
         return rect_(Point(x,y), Point(w,h))
+
+    def __str__(self):
+        return "{}".format(self.measurement)
 
 def calcLU(center:Point, wh:Point):
     nx, ny = center.x - wh.w/2, center.y - wh.h/2

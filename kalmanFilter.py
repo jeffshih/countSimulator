@@ -31,6 +31,7 @@ class kalmanFilter(object):
         self.x[1][0] = x0[1][0]
         self.x[2][0] = x0[2][0]
         self.x[3][0] = x0[3][0]
+        self.B = np.ones((self.m, 1))
 
         #process noise covariance 
         self.Q = np.array([[1, 0, 0, 0, 0, 0, 0],
@@ -44,8 +45,8 @@ class kalmanFilter(object):
         #measurement noise matrix
         self.R = np.array([[1, 0, 0, 0],
                                         [0, 1, 0, 0],
-                                        [0, 0, 10, 0],
-                                        [0, 0, 0, 10]])
+                                        [0, 0, 3, 0],
+                                        [0, 0, 0, 3]])
 
         #estimate Error Matrix
         self.P = np.array([[10, 0, 0, 0, 0, 0, 0],
@@ -90,9 +91,9 @@ class kalmanFilter(object):
         '''
 
         
-    def predict(self):
-        #remove B and U, no control input
-        self.x = np.dot(self.F, self.x)
+    def predict(self, u=0):
+        #use control input, we have strong assumption that object is moving left
+        self.x = np.dot(self.F, self.x)#+np.dot(self.B, u)
         self.P = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
         return self.x 
 
