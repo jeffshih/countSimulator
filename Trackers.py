@@ -8,6 +8,7 @@ from Point import Point
 from math import sqrt
 from Generator import detGenerator
 from config import *
+from numpy.random import randint as rnd
 
 
 
@@ -26,13 +27,15 @@ class Tracker(object):
         self.catagory = catagory
         self.lastUpdateTime = 0
 
+        self.color = (rnd(255), rnd(255), rnd(255))
+
         self.confidence = [confidence]
         self.status = 0
         #kalman filter matrix
         
         #self.kf = cv2.KalmanFilter()
         self.initTracker(rect)
-        print("create new tracker {}".format(id))
+        #print("create new tracker {}".format(id))
         self.history = []
 
     def initTracker(self, det:rect_):

@@ -12,6 +12,12 @@ def renderRect(rect:rect_, backGround, catagory):
     LU = (int(rect.LU.x), int(rect.LU.y))
     BR = (int(rect.LU.x+rect.width), int(rect.LU.y+rect.height))
     cv2.rectangle(backGround, LU, BR, catagoryColor[catagory], 3)
+
+def renderRectWithColor(rect:rect_, bg, color):
+    LU = (int(rect.LU.x), int(rect.LU.y))
+    BR = (int(rect.LU.x+rect.width), int(rect.LU.y+rect.height))
+    cv2.rectangle(bg, LU, BR, color, 3)
+
         
 def renderTextUnderRect(rect:rect_, backGround, text):
     rendStr = "trk id: {}".format(text)
@@ -162,8 +168,8 @@ def getMatchingCost(det, pred):
 
 def getShapeSizeCost(det:rect_, pred:rect_):
 
-    normalizedDx = (det.LeftUpper.x-pred.LeftUpper.x)/min(det.width, pred.width)
-    normalizedDy = (det.LeftUpper.y-pred.LeftUpper.y)/min(det.height, pred.height)
+    normalizedDx = (det.LU.x-pred.LU.x)/min(det.width, pred.width)
+    normalizedDy = (det.LU.y-pred.LU.y)/min(det.height, pred.height)
     costA = exp(-0.5*(normalizedDx**2 + normalizedDy**2))
 
     normalizedDw = (det.width-pred.width)/(det.width+pred.width)

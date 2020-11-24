@@ -17,17 +17,28 @@ class mainProgram(object):
         self.detParser = detectionParser()
         self.detectionSequence = self.detParser.getDetSequence(transform(detRes))
         self.momTracker = trackerManager()
-    
+        self.countingResult = {}
+
     def doCounting(self):
         for frameNum, dets in self.detectionSequence.items():
-            print(frameNum)
-            self.momTracker.doTracking(dets)
+            self.momTracker.doTracking(dets, frameNum)
             messages = self.momTracker.predict()
             for trkId, msg in messages.items():
                 print("At frameNum: {}, trkId {} was counted as type {} with confidence {:.4f}".\
                     format(frameNum, trkId, msg.catagory, msg.confidence))
 
+    def genCountingResult(self):
+        for frameNum, dets in self.detectionSequence.items():
+            self.momTracker.doTracking(dets, frameNum)
+            messages = self.momTracker.predict()
+            self.countingResult[frameNum] = []
+            for trkId, msg in messages.items():
+                self.countingResult[frameNum].append(msg.catagory)
+        return self.countingResult
 
+    def printSequence(self):
+        for frameNum, dets in self.detectionSequence.items():
+            print(frameNum, len(dets))
 
 if __name__ == "__main__":
     detGen = detGenerator(minObj=5, maxObj=10)

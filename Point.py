@@ -20,4 +20,8 @@ class Point(object):
         except IndexError:
             print("Idx out of bound")
 
+    def __str__(self):
+        return "{},{}".format(self.x, self.y)
+    
+
         

@@ -30,18 +30,20 @@ class msgForRender(object):
         self.historyList = []
         self.trackIds = []
         self.detList = []
+        self.colors = []
         for trkId, trk in trkList.items():
             self.estimateBoxs.append(trk.estimateBox)
             self.lastUpdateRects.append(trk.lastUpdateRect)
             self.historyList.append(trk.history)
             self.trackIds.append(trkId)
+            self.colors.append(trk.color)
             sumConf = 0
             for c in trk.confidence:
                 sumConf += c 
             self.confidence.append(sumConf/len(trk.confidence))
 
         for det in detList:
-            detBox = rect_(det.relativeCenter, det.relativeWH)
+            detBox = det.rect
             self.detList.append(detBox)
             self.catagories.append(det.catagory)
 

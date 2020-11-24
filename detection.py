@@ -48,7 +48,7 @@ class detectionResult(object):
         #1/5 of the frame width and y theoratically don't move
         self.xStride = imgSize.w/5
         
-        self.existTime = 1
+        self.existTime = 0
         self.lifespan = np.random.randint(3,6)
         
         #object original y while object wont move in y direction drastically,
