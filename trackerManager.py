@@ -7,7 +7,7 @@ from scipy.optimize import linear_sum_assignment
 from config import *
 from Trackers import Tracker
 from dataStructure import rect_, trackerMessage, msgForRender
-from Pair import Pair
+from Point import Point
 from detectionParser import detectionParser
 import cv2
 
@@ -38,14 +38,14 @@ class trackerManager(object):
             meta.append([det.catagory, det.confidence])
             #print("At frame:{}, create detection {}".format(frameNum,detBox))
 
-        matchedPairs = {}
+        matchedPoints = {}
         trkIdInList = 0
 
         for trkId, t in self.trackerList.items():
             predBox = t.estimateBox
             self.predictionBoxes.append(predBox)
             print("At frame:{}, hold prediction num {} ,{}".format(frameNum,trkId,predBox))
-            matchedPairs[trkIdInList] = trkId
+            matchedPoints[trkIdInList] = trkId
             trkIdInList +=1
 
         detCnt = len(self.detectionBoxes)
@@ -81,11 +81,11 @@ class trackerManager(object):
         print(self.assignment)
         for idx, assign in enumerate(self.assignment):
             confidence = meta[assign][1]
-            print("assign det {} to pred {}".format(assign, matchedPairs[idx]))
+            print("assign det {} to pred {}".format(assign, matchedPoints[idx]))
             print(self.detectionBoxes[assign])
             print(len(self.trackerList))
-            print(self.trackerList[matchedPairs[idx]].getRect())
-            self.trackerList[matchedPairs[idx]].setTracked(self.detectionBoxes[assign], confidence)
+            print(self.trackerList[matchedPoints[idx]].getRect())
+            self.trackerList[matchedPoints[idx]].setTracked(self.detectionBoxes[assign], confidence)
 
         for detIdx in unmatchDet:
             print("umatched det at idx {}".format(detIdx))

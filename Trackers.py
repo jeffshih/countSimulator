@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 from dataStructure import rect_, state
 from kalmanFilter import kalmanFilter
-from Pair import Pair
+from Point import Point
 from math import sqrt
 from Generator import detGenerator
 from config import *
@@ -56,7 +56,7 @@ class Tracker(object):
         if bbox[2][0] > 0 and bbox[3][0] > 0:
             self.estimateBox = measurementToRect(bbox)
         else:
-            bbox = rect_(Pair(10,10),Pair(10,10))
+            bbox = rect_(Point(10,10),Point(10,10))
             self.status = 2
             self.estimateBox = bbox 
             return self.estimateBox

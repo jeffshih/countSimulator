@@ -1,6 +1,6 @@
 import numpy as np
 from detection import detectionResult
-from Pair import Pair
+from Point import Point
 import string
 from Util import *
 from config import *
@@ -25,12 +25,12 @@ class detectionParser(object):
         cy = float(strSplit[5])
         w = float(strSplit[6])
         h = float(strSplit[7])
-        center = Pair(cx,cy)
-        wh = Pair(w,h)
-        relCenter = ratioToAbs(resolution, center)
-        relWH = ratioToAbs(resolution, wh)
-        det = detectionResult(TimeStamp, catagory, currentFrame, relWH\
-            ,relCenter, resolution, confidence=confidence)
+        center = Point(cx,cy)
+        wh = Point(w,h)
+        Center = ratioToAbs(resolution, center)
+        WH = ratioToAbs(resolution, wh)
+        det = detectionResult(TimeStamp, catagory, currentFrame, WH\
+            ,Center, resolution, confidence=confidence)
         return det
 
     def getDetSequence(self, detDict:dict):

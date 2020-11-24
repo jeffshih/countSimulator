@@ -2,13 +2,13 @@ import numpy
 from Generator import detGenerator, detectionResult
 from Util import *
 from trackerManager import trackerManager
-from Pair import Pair
+from Point import Point
 from detectionParser import detectionParser
 from config import *
 
 class mainProgram(object):
 
-    def __init__(self, detRes:list, imgSize:Pair):
+    def __init__(self, detRes:list, imgSize:Point):
 
         self.objectCount = 0
         self.currentFrame = 1

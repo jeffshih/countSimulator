@@ -1,42 +1,45 @@
 from typing import Tuple
 import numpy as np
 import scipy as sp
-from Pair import Pair
+from Point import Point
 from dataStructure import rect_
 from math import exp, sqrt
 import cv2 
 from config import *
 
-def renderRect(rect:rect_, backGround):
-    LU = (int(rect.LeftUpper.x), int(rect.LeftUpper.y))
-    BR = (int(rect.LeftUpper.x+rect.width), int(rect.LeftUpper.y+rect.height))
-    cv2.rectangle(backGround, LU, BR, colorMap['est'], 3)
+
+def renderRect(rect:rect_, backGround, catagory):
+    LU = (int(rect.LU.x), int(rect.LU.y))
+    BR = (int(rect.LU.x+rect.width), int(rect.LU.y+rect.height))
+    cv2.rectangle(backGround, LU, BR, catagoryColor[catagory], 3)
         
 def renderTextUnderRect(rect:rect_, backGround, text):
     rendStr = "trk id: {}".format(text)
-    BR = (int(rect.LeftUpper.x+rect.width), int(rect.LeftUpper.y+rect.height))
+    BR = (int(rect.LU.x+rect.width), int(rect.LU.y+rect.height))
     cv2.putText(backGround, rendStr, BR, fontFace=cv2.FONT_HERSHEY_PLAIN, fontScale=2, color=colorMap['est'],thickness=3)
 
 
 
-def convertLU(center:Pair, wh:Pair):
+def calcLU(center:Point, wh:Point):
     nx, ny = center.x - wh.x/2, center.y - wh.y/2
     if (center.x-wh.x/2) < 0:
         nx = 0
     if (center.y-wh.y/2) < 0:
         ny = 0
-    return Pair(nx,ny)    
+    return Point(nx,ny)    
 
-def areaOfTwoPair(lu:Pair, br:Pair):
+def areaOfTwoPoint(lu:Point, br:Point):
     w = br.x - lu.x 
     h = br.y - lu.y
     return w*h 
 
-def distanceOfTwoPair(src:Pair, dst:Pair):
+def distanceOfTwoPoint(src:Point, dst:Point):
     src = np.array(src)
     dst = np.array(dst)
     return np.linalg.norm(src-dst)
 
+
+#if the center is out of background, resize it to proper place
 def adjustCenter(x, y, w, h):
     xb = resolution[0]
     yb = resolution[1]
@@ -57,7 +60,7 @@ def adjustCenter(x, y, w, h):
         newY = yb-newH/2
     else:
         newH, newY = h, y
-    return Pair(newX, newY), Pair(newW, newH)
+    return Point(newX, newY), Point(newW, newH)
 
 def makeValidRange(det:rect_):
     x = det.center.x
@@ -101,21 +104,22 @@ def boundRatioSize(input):
     else:
         return input
 
-def absToRatio(imgSize:Pair, input:Pair):
+def absToRatio(imgSize:Point, input:Point):
     
     x = boundPixelSize(imgSize.x, input.x)
     y = boundPixelSize(imgSize.y, input.y)
     x_ratio = x/imgSize.x
     y_ratio = y/imgSize.y
-    return Pair(x_ratio, y_ratio)
+    return Point(x_ratio, y_ratio)
 
-def ratioToAbs(imgSize:Pair, ratio:Pair):
+def ratioToAbs(imgSize:Point, ratio:Point):
     x = boundRatioSize(ratio.x)
     y = boundRatioSize(ratio.y)
     xAbs = imgSize.x*x
     yAbs = imgSize.y*y
-    return Pair(xAbs, yAbs)
+    return Point(xAbs, yAbs)
 
+#transform output of data generator from list to dict
 def transform(l : list):
     res = {}
     for det in l:
@@ -126,17 +130,18 @@ def transform(l : list):
             res[imgIdx].append(det)
     return res
 
+#calculation of overlapping
 
 def overlap(A:rect_, B:rect_):
-    x1 = max(A.LeftUpper.x, B.LeftUpper.x)
-    y1 = max(A.LeftUpper.y, B.LeftUpper.y)
-    x2 = min(A.LeftUpper.x+A.width, B.LeftUpper.x+B.width)
-    y2 = min(A.LeftUpper.y+A.height, B.LeftUpper.y+B.height)
-    overlapW = x2-x1
-    overlapH = y2-y1 
-    overlapArea = overlapH*overlapW
-    if overlapH < 0 or overlapW < 0:
+    x1 = max(A.LU.x, B.LU.x)
+    y1 = max(A.LU.y, B.LU.y)
+    x2 = min(A.LU.x+A.width, B.LU.x+B.width)
+    y2 = min(A.LU.y+A.height, B.LU.y+B.height)
+    width = x2-x1
+    height = y2-y1 
+    if width < 0 or height < 0:
         return 0
+    overlapArea = width*height
     #print("overlap :", overlapArea)
     return overlapArea
 
@@ -172,4 +177,4 @@ def measurementToRect(measurement):
     y = measurement[1][0]
     w = sqrt(measurement[2][0]*measurement[3][0])
     h = sqrt(measurement[2][0]/measurement[3][0])
-    return rect_(Pair(x,y), Pair(w,h))
+    return rect_(Point(x,y), Point(w,h))

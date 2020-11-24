@@ -3,12 +3,11 @@ from numpy.lib.function_base import average
 import scipy as sp
 from typing import Callable, Any, Iterable
 from math import sqrt
-from Pair import Pair
+from Point import Point
 
 
 
 class trackerMessage(object):
-    
     def __init__(self, trk):
         self.trkId = trk.trackerId
         sumConf = 0
@@ -46,20 +45,25 @@ class msgForRender(object):
             self.detList.append(detBox)
             self.catagories.append(det.catagory)
 
+#basic rect box for passing, x and y denote center
 class rect_(object):
     #input are pixels
-    def __init__(self, center:Pair, wh:Pair):
-        self.width = wh[0]
-        self.height = wh[1]
+    def __init__(self, center:Point, wh:Point):
+        self.width = wh.w
+        self.height = wh.h
         self.center = center 
+        self.x = center.x 
+        self.y = center.y
         self.wh = wh
-        self.LeftUpper = convertLU(center,wh)
-        self.area = wh[0]*wh[1]
-    
+        self.LU = calcLU(center,wh)
+        self.BR = Point(self.LU.x + wh.w, self.LU.y+wh.h)
+        self.area = wh.w*wh.h 
+
     def __str__(self):
         return "{},{},{},{}".format(self.center.x, self.center.y, self.width, self.height)
     
 
+#for kalman filter tracking
 class state(object):
     
     def __init__(self, bbox:rect_):
@@ -78,10 +82,10 @@ class state(object):
         y = self.measurement[1][0]
         w = sqrt(self.measurement[2][0]*self.measurement[3][0])
         h = sqrt(self.measurement[2][0]/self.measurement[3][0])
-        return rect_(Pair(x,y), Pair(w,h))
+        return rect_(Point(x,y), Point(w,h))
 
-def convertLU(center:Pair, wh:Pair):
+def calcLU(center:Point, wh:Point):
     nx, ny = center.x - wh.w/2, center.y - wh.h/2
     nx = 0 if nx < 0 else nx 
     ny = 0 if ny < 0 else ny
-    return Pair(nx,ny)
+    return Point(nx,ny)

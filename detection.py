@@ -1,34 +1,37 @@
 import time 
 import numpy as np
 import weakref
-from Pair import Pair
+from Point import Point
 from Util import *
 from config import *
+from dataStructure import *
 
 class detectionResult(object):
     #every param is imgSize when init a det
-    def __init__(self, timestamp, catagory, id, wh:Pair, center:Pair, imgSize:Pair, stride = None, confidence=None):
+    def __init__(self, timestamp, catagory, id, wh:Point, center:Point, imgSize:Point, confidence=None):
         
         #in ratio
         self.wh = absToRatio(imgSize, wh)
         self.center = absToRatio(imgSize, center)
+        self.absCenter = center
+        self.absWH = wh
+        self.absW = wh.w 
+        self.absH = wh.h
+        self.rect = rect_(center,wh)
 
         #Left upper point
-        self.relLU = convertLU(center, wh)
-        self.LeftUpper = absToRatio(imgSize, self.relLU)
-        self.areaRatio = self.wh[0]*self.wh[1]
-        self.br = Pair((center.x+wh.w/2), (center.y+wh.h/2))
-
+        self.LU = calcLU(center, wh)
+        self.BR = Point((center.x+wh.w/2), (center.y+wh.h/2))
+        
         #img size
         self.imgSize = imgSize
         
-        #convert coordinate relative to imgsize
-        self.relativeWH = wh
-        self.relArea = wh.w*wh.h
-        self.relativeCenter = center
-
+        #convert coordinate ans to imgsize
+        self.absArea = wh.w*wh.h
+        self.areaRatio = self.wh[0]*self.wh[1]
+        
         #unchange variable
-        self.frameID = id 
+        self.objId = id 
         self.catagory = catagory
 
         #change by time
@@ -43,36 +46,46 @@ class detectionResult(object):
         #belt move in constant speed
         #when every frame move, the object move in x direction with 
         #1/5 of the frame width and y theoratically don't move
-        #but introducing 5% of variation, we give it 10% of variation
-        strideRatio = stride if stride is not None else np.random.randint(3,6)
-        self.stride = Pair(imgSize.w/strideRatio, imgSize.h*0.01)
+        self.xStride = imgSize.w/5
+        
         self.existTime = 1
+        self.lifespan = np.random.randint(3,6)
+        
+        #object original y while object wont move in y direction drastically,
+        #keep the original w and h
         self.originAbsY = center.y
         self.orW = wh.w
         self.orH = wh.h
         self.isDetected = True
     
+
+    def mover(self):
+        pass
+
     def updateConfidence(self):
         self.confidence = 1-(np.random.rand()*0.02)
 
 
         #input is in pixel format
-    def updatePosition(self,timestamp:int, relCenter:Pair, relWH:Pair):
-        self.timestamp = timestamp
+    def updatePosition(self,timestamp:int, absCenter:Point, absWH:Point):
         
+        self.rect = rect_(absCenter,absWH)
+
+        self.timestamp = timestamp
         self.existTime +=1
 
-        self.center = absToRatio(self.imgSize, relCenter)
-        self.wh = absToRatio(self.imgSize, relWH)
+        self.center = absToRatio(self.imgSize, absCenter)
+        self.wh = absToRatio(self.imgSize, absWH)
         
-        self.relLU = convertLU(relCenter, relWH)
-        self.LeftUpper = absToRatio(self.imgSize, self.relLU)
+        self.absW, self.absH = absWH.w , absWH.h
+        self.LU = calcLU(absCenter, absWH)
+        self.BR = Point(self.LU.x+absWH.w, self.LU.y+absWH.h)
 
         self.areaRatio = self.wh[0]*self.wh[1]
-        self.relArea = relWH.w*relWH.h
+        self.absArea = absWH.w*absWH.h
         
-        self.relativeCenter = relCenter
-        self.relativeWH = relWH
+        self.absCenter = absCenter
+        self.absWH = absWH
         self.updateConfidence()
         if (np.random.rand() < catagoryMissRate[self.catagory]):
             self.isDetected = False
@@ -84,28 +97,5 @@ class detectionResult(object):
                 , self.center.x, self.center.y, self.wh.x, self.wh.y))
 
     def getRect(self):
-        return [self.relativeCenter.x, self.relativeCenter.y, \
-            self.relativeWH.w, self.relativeWH.h]
-
-
-def overlap(A:detectionResult, B:detectionResult):
-    x1 = max(A.relLU.x, B.relLU.x)
-    y1 = max(A.relLU.y, B.relLU.y)
-    x2 = min(A.relLU.x+A.relativeWH.w, B.relLU.x+B.relativeWH.w)
-    y2 = min(A.relLU.y+A.relativeWH.h, B.relLU.y+B.relativeWH.h)
-    W = x2-x1
-    H = y2-y1 
-    overlapArea = H*W
-    if W < 0 or H < 0 :
-        return 0
-    else:
-        return overlapArea
-
-def union(A:detectionResult, B:detectionResult):
-    unionArea = A.relArea+B.relArea - overlap(A,B)
-    #print("A area {} B area {}".format(A.relArea, B.relArea))
-    return unionArea
-
-def IOU(A:detectionResult, B:detectionResult):
-    #print("IOU :",overlap(A,B)/union(A,B))
-    return overlap(A,B)/union(A,B)
+        return [self.absCenter.x, self.absCenter.y, \
+            self.absWH.w, self.absWH.h]
