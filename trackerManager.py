@@ -5,7 +5,7 @@ from Util import getMatchingCost, renderRectWithColor, renderTextUnderRect, tran
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from config import *
-from Trackers import Tracker
+from Trackers import Tracker, history
 from dataStructure import rect_, trackerMessage, msgForRender
 from Point import Point
 from detectionParser import detectionParser
@@ -22,50 +22,62 @@ class trackerManager(object):
         self.currentTrackerID = 0
         self.objectCnt = {}
         self.frameNum = 0
+        self.trackerHistory = {}
+        for i in range(1,6):
+            self.objectCnt[i] = 0
+
+    def reset(self):
+        self.trackerList.clear()
+        self.currentTrackerID = 0
+        self.objectCnt.clear()
+        self.frameNum = 0
+        self.trackerHistory.clear()
         for i in range(1,6):
             self.objectCnt[i] = 0
 
 
-    def doTracking(self, detections):
+    def calCostMatrix(self, detections):
         self.frameNum +=1
         self.currentDet = detections
         self.detectionBoxes = []
         self.predictionBoxes = []
+        self.matchedPoints = {}
         self.assignment = []
+        self.costMatrix = None
 
         for det in detections:
             self.detectionBoxes.append(det.rect)
-            #print("At frame:{}, create detection {}".format(frameNum,detBox))
-
-        matchedPoints = {}
+            
         trkIdInList = 0
 
         for trkId, t in self.trackerList.items():
             predBox = t.estimateBox
             self.predictionBoxes.append(predBox)
-            #print("At frame:{}, hold prediction num {} ,{}".format(frameNum,trkId,predBox))
-            matchedPoints[trkIdInList] = trkId
+            self.matchedPoints[trkIdInList] = trkId
             trkIdInList +=1
 
-        detCnt = len(self.detectionBoxes)
-        predCnt = len(self.predictionBoxes)
-
-        costMatrix = np.zeros((detCnt,predCnt),dtype=float)
+        self.costMatrix = np.zeros((len(detections),trkIdInList),dtype=float)
         
         for i, detection in enumerate(self.detectionBoxes):
             for j, prediction in enumerate(self.predictionBoxes):
                 cost = getMatchingCost(detection, prediction)
-                costMatrix[i][j] = cost 
+                self.costMatrix[i][j] = cost 
             
 
-        self.assignment, col_ind = linear_sum_assignment(costMatrix)
+        self.assignment, col_ind = linear_sum_assignment(self.costMatrix)
+        
+        
+
+    def assignDetToTracker(self):
+
+        detCnt = len(self.detectionBoxes)
+        predCnt = len(self.predictionBoxes)
+
         unmatchPred = set()
         unmatchDet = set()
         allItems = set()
         matchedItems = set()
         
-        
-
         if(detCnt > predCnt):
             for i in range(detCnt):
                 allItems.add(i)
@@ -78,32 +90,35 @@ class trackerManager(object):
                 if (i not in self.assignment):
                     unmatchPred.add(i)
         
-        #print(self.assignment)
         for idx, assign in enumerate(self.assignment):
             confidence = self.currentDet[assign].confidence
-            
-            '''
-            print("assign det {} to pred {}".format(assign, matchedPoints[idx]))
-            
-            print(self.detectionBoxes[assign])
-            print(len(self.trackerList))
-            print(self.trackerList[matchedPoints[idx]].getRect())
-            '''
 
-            self.trackerList[matchedPoints[idx]].setTracked(self.detectionBoxes[assign], confidence)
-            #print(self.trackerList[matchedPoints[idx]])
-            #pairDP
+            self.trackerList[self.matchedPoints[idx]].setTracked(self.detectionBoxes[assign], confidence)
+            '''
+            print("link prediction {}".format(self.trackerList[self.matchedPoints[idx]].trackerId))
+            print("link prediction {}".format(self.trackerList[self.matchedPoints[idx]].estimateBox))
+            print("with detection : {}".format(self.detectionBoxes[assign]))
+            print("at cost equals: {}".format(self.costMatrix[assign][idx]))
+            '''
 
         for detIdx in unmatchDet:
-            '''
-            print("umatched det at idx {}".format(detIdx))
-            '''
             newDet = self.currentDet[detIdx]
-            
             newTracker = Tracker(self.currentTrackerID, newDet.rect, newDet.catagory, newDet.confidence)
+            tHistory = history(self.frameNum, newTracker)
+            self.trackerHistory.update({self.currentTrackerID : tHistory})
             self.trackerList[self.currentTrackerID] = newTracker
             self.currentTrackerID += 1
 
+    def update(self,dets):
+        self.calCostMatrix(dets)
+        self.assignDetToTracker()
+
+
+    def getTrackerCount(self):
+        return len(self.trackerList)
+
+    def getTrackerHistory(self):
+        return self.trackerHistory
 
     def checkStatus(self, tracker):
         statusCode = tracker.status
@@ -113,14 +128,10 @@ class trackerManager(object):
             print("very healthy tracker tracker {}".format(id))
         elif statusCode == 2:
             print("Tracker {} travel through belt".format(id))
-        elif statusCode == 3:
-            print("long live tracker {}".format(id))
-        elif statusCode == 4:
+        else: statusCode == 0:
             print("{} is a dead tracker, bad".format(id))
-        else:
-            print("{} is a good tracker doing well".format(id))
         '''
-        return statusCode != 0
+        return statusCode
 
     def predict(self):
         trkToKill = []
@@ -132,12 +143,18 @@ class trackerManager(object):
                 #print("trkId from tracker {}".format(t.trackerId))
                 bbox = t.predict()
             #check tracker healthy status
-            if self.checkStatus(t):
-                self.objectCnt[t.catagory] += 1
-                trkMsg = trackerMessage(t)
-                currentMessage[t.trackerId] = trkMsg
+            if self.checkStatus(t) == 0:
+                continue
+            elif t.status ==2:
                 trkToKill.append(trkId)
-                
+            elif t.status == 1:
+                if t.estimateBox.rx > 0.6:
+                    self.objectCnt[t.catagory] += 1
+                    trkMsg = trackerMessage(t)
+                    currentMessage[t.trackerId] = trkMsg
+                trkToKill.append(trkId)
+            self.trackerHistory[t.trackerId].add(t)
+
         for id in trkToKill:
             #print("removing {}".format(id))
             del self.trackerList[id]
@@ -156,7 +173,8 @@ if __name__ == "__main__":
     
     momTracker = trackerManager()
     for frameNum, dets in detectionSequence.items():
-        momTracker.doTracking(dets)
+        momTracker.calCostMatrix(dets)
+        momTracker.assignDetToTracker()
         currentFrameCounted, renderData = momTracker.predict()
        
         backGround = np.zeros((720, 1080, 3), np.uint8)

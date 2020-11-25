@@ -6,6 +6,7 @@ catagoryColor = [(200,0,0), (0, 200, 0), (0, 0, 200), (200, 200, 0), (0, 200, 20
 validSize = {1:(200, 400), 2:(200, 100), 3:(250, 110), 4:(230, 120), 5:(130, 100)}
 
 
+
 catagoryMissRate = {}
 for i in range(0,6):
     catagoryMissRate[i] = np.random.rand()*0.4

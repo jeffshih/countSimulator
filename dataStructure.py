@@ -4,6 +4,7 @@ import scipy as sp
 from typing import Callable, Any, Iterable
 from math import sqrt
 from Point import Point
+from config import *
 
 
 
@@ -61,13 +62,19 @@ class rect_(object):
         self.x = center.x 
         self.y = center.y
         self.wh = wh
+        self.rx = center.x/resolution[0]
         self.LU = calcLU(center,wh)
         self.BR = Point(self.LU.x + wh.w, self.LU.y+wh.h)
         self.area = wh.w*wh.h 
 
     def __str__(self):
         return "{},{},{},{}".format(self.center.x, self.center.y, self.width, self.height)
+
+    def getXYSR(self):
+        return np.array([self.x,self.y,self.area,self.width/self.height])
     
+
+
 
 #for kalman filter tracking
 class state(object):

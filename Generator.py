@@ -1,6 +1,4 @@
-from typing import Generator
 import numpy as np
-from numpy.linalg.linalg import det
 import scipy as sp
 from Util import *
 import datetime
@@ -10,8 +8,7 @@ from detection import detectionResult
 from datetime import datetime
 import csv
 from config import *
-import matplotlib.pyplot as plt
-
+import sys
 
 class detGenerator(object):
     
@@ -39,7 +36,7 @@ class detGenerator(object):
         self.detectionResultList = []
         self.statOfFrame = np.zeros(100)
         self.countResult = {}
-
+        self.totalObj = 0
         #background image
         self.bg = rect_(Point(self.width/2, self.height/2), self.wh)
 
@@ -48,9 +45,7 @@ class detGenerator(object):
         #init first frame
         self.batchAddObject(self.initObjectCount)
         
-        # to delete
-        self.line = 0
-        self.calculatedLine = 0
+
 
     
     def addObj(self, det:detectionResult):        
@@ -72,19 +67,16 @@ class detGenerator(object):
         
         #Object always appear from left except first frame, 
         #each object might appear 3~5 frame
-
         #gen object width and height
-        #w, h = catagorySize[catagory][0], catagorySize[catagory][1]
-       
-        w, h = np.random.randint(50,300), np.random.randint(50, 150)
+        
+        w, h = np.random.randint(100,250), np.random.randint(70, 170)
+        
         if self.imgId == 0:
             absCenterX = np.random.rand()*self.width 
         else:
             xMid = self.leftMost/2
-            absCenterX = max((0.5-np.random.rand())*w + xMid, self.width/5)
+            absCenterX = min((0.5-np.random.rand())*w + xMid, self.width/5)
             
-
-        
         #Object won't directly has large overlap, it might continuously appear
         #but not overlap
         
@@ -98,7 +90,6 @@ class detGenerator(object):
         #make variation of detection bot
         absWH = Point(w*wVar, h*hVar)
         absC = Point(absCenterX, absCenterY)
-        #print(absC)
         return detectionResult(currentTimestamp, catagory, self.objId, absWH, absC, resolution)
        
 
@@ -130,7 +121,7 @@ class detGenerator(object):
     def batchAddObject(self, num):
         for i in range(num):
             tempDet = self.genObject()
-            while self.checkDetOverLap(tempDet, 0.2) is not True:
+            while self.checkDetOverLap(tempDet, 0.3) is not True:
                 tempDet = self.genObject()
             self.addObj(tempDet)
 
@@ -156,11 +147,8 @@ class detGenerator(object):
         for key, det in self.objectHolds.items():
             self.move(det)
             if det.existTime == det.lifespan :
-                self.calculatedLine += det.existTime
                 toRemove.append(key)
-                self.countResult[self.imgId].append(det.catagory)
-        #        print("{} is dead".format(key))
-                
+                self.countResult[self.imgId].append(det.catagory)       
 
         for k in toRemove:
             del self.objectHolds[k]
@@ -185,7 +173,6 @@ class detGenerator(object):
         self.imgId +=1
     
     def constructDet(self, det:detectionResult):
-        self.line +=1
         return ('{},{},{},{:.4f},{:.3f},{:.3f},{:.3f},{:.3f}'.format(det.timestamp, self.imgId, det.catagory, det.confidence\
                     , det.center.x, det.center.y, det.wh.x, det.wh.y))
 
@@ -210,8 +197,7 @@ class detGenerator(object):
         self.countResult.clear()
         self.batchAddObject(self.initObjectCount)
 
-        #to delete
-        self.line = 0
+
         
 
     '''
@@ -270,18 +256,13 @@ class detGenerator(object):
 
 
 if __name__=="__main__":
+    arg = str(sys.argv)
     detGen = detGenerator(minObj=5,maxObj=10, framenum = 100)
-    #detGen.run()
-    #print(detGen.line)
-    detGen.display()
-    #print(detGen.line)
-    '''
-    for _ in range(100):
-        l = detGen.getDetectionRes()
-        print(detGen.line)
-        print(detGen.objId)
-        detGen.reset()
-    '''
-
-        
+    if "display" in arg:
+        detGen.display(False)
+    elif "save" in arg:
+        detGen.toCsv()
+    else:
+        detGen.run()
+    print(detGen.getGroundTruth())
 

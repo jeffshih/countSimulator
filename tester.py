@@ -20,9 +20,8 @@ class evaluation(object):
         self.App = mainProgram()
         self.genDetList = self.dataGen.getDetectionRes()
         self.App.initWithData(self.genDetList)
-        self.grountTruth = self.dataGen.getGroundTruth()
+        self.groundTruth = self.dataGen.getGroundTruth()
         self.countingRes = self.App.genCountingResult()
-        self.dataGen.reset()
 
     def extractType(self, res:dict):
         countType = [0 for _ in range(5)]
@@ -34,19 +33,30 @@ class evaluation(object):
 
     def runCountingAndOutput(self):
         self.App.doCounting()
+    
+    def printGroundTruth(self):
+        print(self.extractType(self.groundTruth))
+
+    def printCountingResult(self):
+        print(self.extractType(self.countingRes))
 
     def resetData(self):
         self.dataGen.reset()
         self.genDetList = self.dataGen.getDetectionRes()
         self.App.initWithData(self.genDetList)
-        self.grountTruth = self.dataGen.getGroundTruth()
+        self.groundTruth = self.dataGen.getGroundTruth()
         
+    def getGroundTruth(self):
+        return self.groundTruth
+    
+    def getCountResult(self):
+        return self.countingRes
 
     def updateCountingResult(self):
         self.countingRes = self.App.genCountingResult()
 
     def compareResult(self):
-        return self.extractType(self.countingRes), self.extractType(self.grountTruth)
+        return self.extractType(self.countingRes), self.extractType(self.groundTruth)
 
 
     def extractCountForPlot(self, res:dict):
@@ -60,7 +70,7 @@ class evaluation(object):
         
         return np.array(x), np.array(y)
 
-    def plotDistribution(self, trial):
+    def plotGenDistribution(self, trial):
         distribution = []
         for _ in range(trial):
             l = self.dataGen.getDetectionRes()
@@ -69,21 +79,32 @@ class evaluation(object):
         plt.hist(distribution, bins=20)
         plt.show()
     
-    
 
-    
+    def plotCountResult(self):
+        #f = plt.figure()
+        plt.figure(21)
+
+        GT = self.extractCountForPlot(self.groundTruth)
+        CNT = self.extractCountForPlot(self.countingRes)
+        plt.subplot(211)
+        plt.scatter(GT[0], GT[1], color='C0', marker="o")
+        plt.subplot(212)
+        plt.scatter(CNT[0], CNT[1], color='C1',marker="o")
+        plt.suptitle("Comparison of counted frame")
+        plt.show()
+        #print(GT, CNT)    
 
 
 
 if __name__ == "__main__":
-    dataGen = detGenerator(framenum=30)
-    detectionResList = dataGen.getDetectionRes()
-    dataGenRes = dataGen.getGroundTruth()
-    dataGen.reset()
-
-    #App = mainProgram(detectionResList, resolution)
-    #res = App.genCountingResult()
-
-    plotDistribution(dataGen, 1000)
+    eval = evaluation()
+    #countResult = eval.getCountResult()
+    #groundTruth = eval.getGroundTruth()
+    #print(countResult,groundTruth)
+    eval.plotCountResult()
+    #eval.printGroundTruth()
+    #eval.printCountingResult()
+    #print(eval.compareResult())
+    print(eval.extractCountForPlot)
 
     

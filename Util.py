@@ -184,3 +184,8 @@ def measurementToRect(measurement):
     w = sqrt(measurement[2][0]*measurement[3][0])
     h = sqrt(measurement[2][0]/measurement[3][0])
     return rect_(Point(x,y), Point(w,h))
+
+def wapperM2R(m):
+    x , y, w, h = m[0], m[1], sqrt(m[2]*m[3]), sqrt(m[2]/m[3])
+    return rect_(Point(x,y), Point(w,h))
+ 

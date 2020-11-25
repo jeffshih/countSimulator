@@ -49,7 +49,7 @@ class detectionResult(object):
         self.xStride = imgSize.w/7
         
         self.existTime = 0
-        self.lifespan = 5-self.absW//100
+        self.lifespan = 7 #5-self.absW//100
         
         #object original y while object wont move in y direction drastically,
         #keep the original w and h
@@ -57,12 +57,9 @@ class detectionResult(object):
         self.orW = wh.w
         self.orH = wh.h
         self.isDetected = True
-    
-
 
     def updateConfidence(self):
         self.confidence = 1-(np.random.rand()*0.02)
-
 
         #input is in pixel format
     def updatePosition(self,timestamp:int, absCenter:Point, absWH:Point):
