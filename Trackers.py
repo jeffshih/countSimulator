@@ -26,8 +26,7 @@ class Tracker(object):
         self.lastUpdateRect = rect
         self.catagory = catagory
         self.lastUpdateTime = 0
-        self.controlMatrix = np.array([[rect.width//2],[0],[0],[0]])
-
+        self.controlMatrix = np.array([[rect.width//2],[0.],[0.],[0.],[0.],[0.],[0.]])
         self.color = (rnd(255), rnd(255), rnd(255))
 
         self.confidence = [confidence]
@@ -53,7 +52,7 @@ class Tracker(object):
     def predict(self):
 
         #bbox = self.kf.predict(u=self.controlMatrix)
-        bbox = self.kf.predict()
+        bbox = self.kf.predict(self.controlMatrix)
         #print(bbox)
         
         self.lifespan +=1

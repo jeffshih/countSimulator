@@ -104,7 +104,7 @@ if __name__ == "__main__":
     eval.plotCountResult()
     #eval.printGroundTruth()
     #eval.printCountingResult()
-    #print(eval.compareResult())
+    print(eval.compareResult())
     print(eval.extractCountForPlot)
 
     

@@ -31,8 +31,8 @@ class kalmanFilter(object):
         self.x[1][0] = x0[1][0]
         self.x[2][0] = x0[2][0]
         self.x[3][0] = x0[3][0]
-        self.B = np.ones((self.m, 1))
-
+        self.B = np.eye(self.n)
+        
         #process noise covariance 
         self.Q = np.array([[1, 0, 0, 0, 0, 0, 0],
                                            [0, 1, 0, 0, 0, 0, 0],

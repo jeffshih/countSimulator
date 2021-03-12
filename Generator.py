@@ -259,7 +259,7 @@ if __name__=="__main__":
     arg = str(sys.argv)
     detGen = detGenerator(minObj=5,maxObj=10, framenum = 100)
     if "display" in arg:
-        detGen.display(False)
+        detGen.display()
     elif "save" in arg:
         detGen.toCsv()
     else:
